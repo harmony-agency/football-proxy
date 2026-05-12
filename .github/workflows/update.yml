@@ -1,0 +1,50 @@
+name: Update Fixtures
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create fixtures directory
+        run: mkdir -p data/fixtures
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Fetch fixtures
+        run: |
+
+          MATCHES=$(jq -r '.matches[]' data/matches.json)
+
+          for MATCH_ID in $MATCHES
+          do
+
+            echo "Fetching match: $MATCH_ID"
+
+            curl -s \
+              -H "x-apisports-key: ${{ secrets.API_KEY_FOOTBALL }}" \
+              "https://v3.football.api-sports.io/fixtures?id=${MATCH_ID}&timezone=Asia/Tehran" \
+              -o "data/fixtures/${MATCH_ID}.json"
+
+          done
+
+      - name: Commit changes
+        run: |
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add data/fixtures
+
+          git commit -m "update fixtures" || echo "No changes"
+
+          git push
